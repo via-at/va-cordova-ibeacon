@@ -1,0 +1,121 @@
+<dom-module id="va-cordova-ibeacon">
+
+  <script>
+    Polymer({
+
+      is: 'va-cordova-ibeacon',
+
+      properties: {
+
+        identifier: String,
+
+        uuid: String,
+
+        major: Number,
+
+        minor: Number,
+
+        distance: {
+          notify: true,
+          type: Number,
+          value: 9999
+        },
+
+        approachDistance: {
+          type: Number,
+          value: 100
+        },
+
+        suspendTime: {
+          type: Number,
+          value: 10000
+        }
+      },
+
+      observers: ['_changedBeaconSet(identifier, uuid, major, minor)'],
+
+      get locationManager() {
+        if (!cordova) {
+          throw new Error('No unified JavaScript layer for Cordova.');
+        }
+
+        if (!cordova.plugins.locationManager) {
+          throw new Error('No iBeacon plugin found.');
+        }
+
+        return cordova.plugins.locationManager;
+      },
+
+      ready: function () {
+        var delegate = new this.locationManager.Delegate();
+
+        delegate.didDetermineStateForRegion = this._didDetermineStateForRegion.bind(this);
+
+        delegate.didStartMonitoringForRegion = this._didStartMonitoringForRegion.bind(this);
+
+        delegate.didRangeBeaconsInRegion = this._didRangeBeaconsInRegion.bind(this);
+
+        this.locationManager.setDelegate(delegate);
+      },
+
+      attached: function () {
+        this.locationManager.requestWhenInUseAuthorization();
+      },
+
+      _didDetermineStateForRegion: function (result) {
+        this.fire('DidDetermineState', result);
+      },
+
+      _didStartMonitoringForRegion: function (result) {
+        this.fire('DidStartMonitoring', result);
+      },
+
+      _didRangeBeaconsInRegion: function (result) {
+        if (result.beacons.length > 0) {
+          var b = pluginResult.beacons[0];
+
+          this.distance = Math.pow(10.0, (b.tx - b.rssi) / 20.0);
+
+          if (this.distance <= this.approachDistance) {
+            if (this._changable) {
+              setTimeout(function () {
+                this._changable = true;
+                this._didApproachBeacon({
+                  distance: this.distance,
+                  uuid: b.uuid
+                });
+              }.bind(this), this.suspendTime);
+              this._changable = false;
+            }
+          }
+        }
+
+        this.fire('DidRangeBeacons', result);
+      },
+
+      _didApproachBeacon: function (result) {
+        this.fire('DidApproachBeacon', result);
+      },
+
+      _changedBeaconSet: function () {
+        if (this.identifier && this.uuid && this.major && this.minor) {
+          var beaconRegion = new this.locationManager.BeaconRegion(
+              this.identifier,
+              this.uuid,
+              this.major,
+              this.minor);
+
+          this.locationManager.startMonitoringForRegion(beaconRegion)
+              .fail(function(e) { console.error(e); })
+              .done();
+
+          this.locationManager.startRangingBeaconsInRegion(beaconRegion)
+              .fail(function(e) { console.error(e); })
+              .done();
+        }
+      }
+
+    });
+  </script>
+
+</dom-module>
