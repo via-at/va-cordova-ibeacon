@@ -29,6 +29,11 @@
         suspendTime: {
           type: Number,
           value: 10000
+        },
+
+        _changable: {
+          type: Boolean,
+          value: true
         }
       },
 
@@ -72,20 +77,22 @@
 
       _didRangeBeaconsInRegion: function (result) {
         if (result.beacons.length > 0) {
-          var b = pluginResult.beacons[0];
+          var b = result.beacons[0];
 
           this.distance = Math.pow(10.0, (b.tx - b.rssi) / 20.0);
 
           if (this.distance <= this.approachDistance) {
             if (this._changable) {
+              this._changable = false;
+
+              this._didApproachBeacon({
+                distance: this.distance,
+                uuid: b.uuid
+              });
+
               setTimeout(function () {
                 this._changable = true;
-                this._didApproachBeacon({
-                  distance: this.distance,
-                  uuid: b.uuid
-                });
               }.bind(this), this.suspendTime);
-              this._changable = false;
             }
           }
         }
