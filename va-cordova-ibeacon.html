@@ -60,11 +60,23 @@
 
         delegate.didRangeBeaconsInRegion = this._didRangeBeaconsInRegion.bind(this);
 
+        delegate.didEnterRegion = this._didEnterRegion.bind(this);
+
+        delegate.didExitRegion = this._didExitRegion.bind(this);
+
         this.locationManager.setDelegate(delegate);
       },
 
       attached: function () {
         this.locationManager.requestWhenInUseAuthorization();
+      },
+
+      _didEnterRegion: function (result) {
+        this.fire('DidEnterRegion', result);
+      },
+
+      _didExitRegion: function (result) {
+        this.fire('DidExitRegion', result);
       },
 
       _didDetermineStateForRegion: function (result) {
@@ -79,7 +91,13 @@
         if (result.beacons.length > 0) {
           var b = result.beacons[0];
 
-          this.distance = Math.pow(10.0, (b.tx - b.rssi) / 20.0);
+          //this.distance = Math.pow(10.0, (b.tx - b.rssi) / 20.0);
+          //this.distance = JSON.stringify(b);
+          // {"minor": 322, "rssi": -67, "major": 655, "accuracy" : 0.02
+          //this.distance = Math.pow(10.0, (b.));
+          if (b.proximity === 'ProximityImmediate') {
+            this.distance = 70;
+          }
 
           if (this.distance <= this.approachDistance) {
             if (this._changable) {
@@ -91,6 +109,7 @@
               });
 
               setTimeout(function () {
+                this.distance = 9999;
                 this._changable = true;
               }.bind(this), this.suspendTime);
             }
